@@ -57,6 +57,8 @@ def addproduct(request):
             user_id = user.reg_id
             product_id = uuid.uuid4().hex
             images = upload_image(data['images'])
+            for i in range(len(images)):
+               images[i] = images[i].replace('/home/ubuntu/rr/rr/static/', 'http://54.165.42.145:8001/')
             product_data = {
                 "reg_id": user_id,
                 "location": [{
