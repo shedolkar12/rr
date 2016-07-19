@@ -99,22 +99,25 @@ def upload_image(data):
 @api_view(['POST', 'GET'])
 def product_detail(request):
     if request.method == 'GET':
-        if request.user.is_authenticated():
-            data = request.GET.dict()
-            if 'product_id' in data:
-                query = {"query": {
-                                 "match": {
-                                     "product_id":  data["product_id"]
-                                 }
-                             }
-                        }
-                result = es.search(index='rr_products', body=query)
-                return Response(result['hits']['hits'][0]['_source'])
-            else:
-                return HttpResponse("need Product id")
+        data = request.GET.dict()
+    else:
+        data = request.data
+    if not request.user.is_authenticated():
+        return HttpResponse("user is not authenticated")
+    if 'product_id' not in data:
+        return HttpResponse("need Product id")
 
-        else:
-            return HttpResponse("user is not authenticated")
+    query = {"query": {
+                     "match": {
+                         "product_id":  data["product_id"]
+                     }
+                 }
+            }
+    try :         
+        result = es.search(index='rr_products', body=query)
+        return Response(result['hits']['hits'][0]['_source'])
+    except IndexError: 
+        return Response({'product_id': 'Invalid product_id'})
 
 def get_query(data):
     if "lat" in data and "lon" in data:
@@ -153,36 +156,40 @@ def get_query(data):
                     }
     return query
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 def get_all_user_product(request):
     if request.method == 'GET':
-        query = {"size" : 50,}
-        if request.user.is_authenticated():
-            data = request.GET.dict()
-            print(request.user.username)
-            if 'reg_id' not in data:
-                data['reg_id'] = request.user.username
-            if request.user.username != data['reg_id']:
-                return JsonResponse({"reg_id": "use your own reg_id"})
+        data = request.GET.dict()
+    else:
+        data = request.data     
+    query = {"size" : 50,}
+    if not  request.user.is_authenticated():
+        return HttpResponse("User is not Authenticated")
+    if 'reg_id' not in data:
+        data['reg_id'] = request.user.username
+    if request.user.username != data['reg_id']:
+        return JsonResponse({"reg_id": "use your own reg_id"})
 
-            query = {"query": {
-                             "match": {
-                                 "reg_id":  data["reg_id"]
-                             }
-                         }
-                    }
-            result = es.search(index='rr_products', body=query)
-            return Response({'data': get_result(result)})
-        else:
-            return HttpResponse("User is not Authenticated")
+    query = {"query": {
+                     "match": {
+                         "reg_id":  data["reg_id"]
+                     }
+                 }
+            }
+    result = es.search(index='rr_products', body=query)
+    return Response({'data': get_result(result)})
 
-@api_view(['GET'])
+
+@api_view(['GET', 'POST'])
 def get_all_product(request):
     if request.method=='GET':
         data = request.GET.dict()
-        query = get_query(data)
-        result = es.search(index='rr_products', body=query)
-        return Response({'data': get_result(result)})
+    else:
+        data = request.data
+               
+    query = get_query(data)
+    result = es.search(index='rr_products', body=query)     
+    return Response({'data': get_result(result)})
 
 def get_result(data):
     result = []
